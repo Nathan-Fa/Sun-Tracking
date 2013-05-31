@@ -1,0 +1,11 @@
+P: bei I2C werden nur 7 Bit pro Byte übertragen
+L: Anpassung der µC-Taktfrequenz mit externen 20MHz Quarz
+
+P: RPi bleibt beim Bootvorgang mit angeschlosssenem SCL hängen
+L: Booten mit zuvor eingeschaltetem µC ????
+
+P: Hall-Sensoren sollten mit mind. 10V versorgt werden
+L: Ggf. Schaltungsanpoassung und Optokoppler an Hall-Signale
+
+P: µC und RPi haben unterschiedliche Spannungspegel (5, 3.3V)
+L: Pegelanpassung 
