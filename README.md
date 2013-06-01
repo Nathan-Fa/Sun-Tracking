@@ -1,7 +1,7 @@
 Sun_Tracking_Control
 ===============
 
-Converts sun angles and drives two linear motors for sun-tracking
+Sun_Tracking_Control converts sun angles to motor steps and drives two linear motors for sun-tracking
 
 #######################################################################
 
@@ -20,14 +20,13 @@ Copyright (C) 2013  Felix Gottwald, HTW Dresden
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-contact:
-info@labor-elektrische-mobilitaet.de
+contact: gottwald@htw-dresden.de
 
 #######################################################################
 
-main features:
+features:
 - calculating step count from given sun angles 
-- evaluates hall-sensor-controlled step counter 
+- evaluating motor-step-count from hall-sensors 
 - drives linear motors to given angles
 - Safety functions 
 
@@ -35,6 +34,8 @@ main features:
 
 Used device: ATMega88
 
-Documentation and Schematics can be found at: 
+Documentation and schematics can be found at: 
+
 http://wiki.labor-elektrische-mobilitaet.de/index.php/LEV_charge:Sonnenstandsnachf%C3%BChrungseinrichtung
+
 http://wiki.labor-elektrische-mobilitaet.de/index.php/Motorsteuerung
