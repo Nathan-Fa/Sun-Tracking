@@ -1,7 +1,7 @@
 Sun\_Tracking\_Control
 ===============
 
-Converts sun angles and drives two linear motors for horizontal and vertical sun-tracking.
+Converts sun angles and drives two linear motors for sun-tracking.
 
 Copyright (C) 2013  Felix Gottwald, HTW Dresden
 
@@ -18,33 +18,33 @@ Copyright (C) 2013  Felix Gottwald, HTW Dresden
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-**Contact:**
+contact:
 info@labor-elektrische-mobilitaet.de
 
 #### Main features:
-- calculating step count from given sun angle (azimut, elevation) 
+- calculating step count from given sun angles 
 - evaluates hall-sensor-controlled step counter 
-- drives half-bridges (freescale 33926) for linear motors (SatControl SM4S520M1) to given  angles 
-- safety functions 
+- drives half-bridges for linear motors to given angles
+- Safety functions 
 
 #### Communication protocol: 
 
 * I²C slave adresse:			`0x13`
 * ERROR CODES: 
-    * `0x50` _ERR\_STAUS\_FLAG_	
-    * `0x51` _ERR\_ILLEGAL\_END_
-    * `0x52` _ERR\_STEPCOUNTER\_OVERFLOW_
+    * `0x50` _ERR\_STAUS\_FLAG_			
+    * `0x51` _ERR\_ILLEGAL\_END_			
+    * `0x52` _ERR\_STEPCOUNTER\_OVERFLOW_	
 * COMMANDS:
-    * `0x02` _CMD\_SET\_ANGLE_
-    * `0x04` _CMD\_GOTO\_REFERENCE_
-    * `0x06` _CMD\_STOP_
-    * `0x08` _CMD\_RESET_
-    * `0x33` _CMD\_TERMINATED_
+    * `0x02` _CMD\_SET\_ANGLE_	 		
+    * `0x04` _CMD\_GOTO\_REFERENCE_ 		
+    * `0x06` _CMD\_STOP_			
+    * `0x08` _CMD\_RESET_			
+    * `0x33` _CMD\_TERMINATED_			
 * I²C Register Definition:
-   * `I²C_Data[1]` -  commands / errors - vertical motor
-   * `I²C_Data[2]` -  commands / errors - horizontal  motor
-   * `I²C_Data[3]` -  data - vertical motor
-   * `I²C_Data[4]` - data - horizontal motor
+   * `I²C_Data[1]` - vertical cmd/err
+   * `I²C_Data[2]` - horizontal cmd/err
+   * `I²C_Data[3]` - vertical data
+   * `I²C_Data[4]` - horizontal data
 
 #### Used devices: 
 * ATMega88(Atmel) 
