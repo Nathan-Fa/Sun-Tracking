@@ -6,13 +6,16 @@
 
 /**** motor modes ****/
 #define	NORMAL_MODE 			0x20
-#define FAST_MODE			0x21
+#define SLOW_MODE			0x21
 #define GOTO_REFERENCE			0x22
 
-/**** pin definitions ****/
-#define VERTICAL_FACTOR			495
-#define HORIZONTAL_FACTOR 		550
+/**** step calculating factors ****/
+#define VERTICAL_FACTOR			0x1E0
+#define HORIZONTAL_FACTOR 		0x215
 
+#define MAX_NUMBER_OF_STEPS		0xBB80
+
+/**** pin definitions ****/
 #define VERT_D1				PB0
 #define HORZ_D1				PC1
 #define VERT_D2				PB2
@@ -58,32 +61,43 @@
 #define VERT_SF_DDR			DDRB
 #define HORZ_SF_DDR			DDRC
 
+#define VERT_SF_PORT			PORTB
+#define HORZ_SF_PORT			PORTC
+
 #define HORZ_END_DDR			DDRB
 #define HORZ_END_PIN			PINB
 
 #define VERT_END_DDR			DDRD
 #define VERT_END_PIN			PIND
 
+/**** I2C commands ****/
+#define	CMD_SET_ANGLE	 		0x02
+#define	CMD_GOTO_REFERENCE 		0x04
+#define CMD_STOP			0x06
+#define CMD_RESET			0x08
+#define CMD_TERMINATED			0x33
+
+#define ERR_STAUS_FLAG			0x50
+#define ERR_ILLEGAL_END			0x51
+#define ERR_STEPCOUNTER_OVERFLOW	0x52
+
 /**** macros ****/
 #define DISABLE_MOTOR_CONTROLLERS 	PORTC &= ~(1<<PC0);
 #define ENABLE_MOTOR_CONTROLLERS 	PORTC |= (1<<PC0);
 
-/**** I2C commands ****/
-#define	SET_ELEVATION 			0x02
-#define	SET_AZIMUTH 			0x03
-#define	GOTO_VERTICAL_REFERENCE 	0x04
-#define	GOTO_HORIZONTAL_REFERENCE	0x05
-#define CMD_TERMINATED			0x33
-
 #define I2C_SLAVE_ADRESSE 		0x13
 
 /**** function prototypes ****/
-unsigned char motorControl(unsigned char angle, unsigned char motor, unsigned char mode);
+unsigned char motorControl(unsigned char motor, unsigned char mode);
 void init_hall_cnt(void);
+void init_timer(void);
 void init_io_ports(void);
 
 /**** global variables ****/
-uint32_t hall_cnt_vert_1, hall_cnt_vert_2, hall_cnt_horz_1, hall_cnt_horz_2;
-unsigned char azimuth, elevation;
+unsigned long int hall_cnt_vert_1, hall_cnt_vert_2, hall_cnt_horz_1, hall_cnt_horz_2;
+unsigned int vertSteps, horzSteps;
 unsigned char vertDirection, horzDirection;
+
+/**** Set up function pointer to RESET vector ****/
+void (*funcptr)( void ) = 0x0000; //
 

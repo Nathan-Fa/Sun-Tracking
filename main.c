@@ -2,40 +2,239 @@
 #include <avr/interrupt.h>
 #include <util/twi.h>
 #include <util/delay.h>
+#include <avr/sleep.h>
 #include "main.h"
-#include "twislave.h"   
+#include "twislave.h"
+
+
+ISR (TIMER0_OVF_vect)
+{
+	switch(i2cdata[1]){	
+		case CMD_SET_ANGLE:	
+			vertSteps = i2cdata[3] * VERTICAL_FACTOR;
+			motorControl(VERTICAL,NORMAL_MODE);
+			break;
+		case CMD_GOTO_REFERENCE:	
+			motorControl(VERTICAL,GOTO_REFERENCE); 
+			break;
+		case CMD_RESET:
+			funcptr(); // Jump to Reset vector 0x0000
+			break;
+		case CMD_STOP:
+			VERT_OUT_PORT &= ~(1<<VERT_OUT);
+			i2cdata[1] = CMD_TERMINATED;
+			break;
+		default: break;
+	}
+
+	switch(i2cdata[2]){
+		case CMD_SET_ANGLE:	
+			horzSteps = i2cdata[4] * HORIZONTAL_FACTOR;
+			motorControl(HORIZONTAL,NORMAL_MODE); 
+			break;	
+		case CMD_GOTO_REFERENCE:	
+			motorControl(HORIZONTAL,GOTO_REFERENCE); 
+			break;
+		case CMD_RESET:
+			funcptr(); // Jump to Reset vector 0x0000
+			break;
+		case CMD_STOP:
+			HORZ_OUT_PORT &= ~(1<<HORZ_OUT);
+			i2cdata[2] = CMD_TERMINATED;
+			break;
+		default: break;
+	}
+}
 
 
 ISR(INT0_vect)
 { 
-	if(vertDirection == FORWARD){
-		hall_cnt_vert_1++; 
-	}else if(vertDirection == BACKWARD){
-		hall_cnt_vert_1--;
+	if(vertDirection == BACKWARD){
+		hall_cnt_vert_1--; 
+	}else{
+		hall_cnt_vert_1++;
 	}
 }
 
 
 ISR(INT1_vect)
 { 
-	if(horzDirection == FORWARD){
-		hall_cnt_horz_1++; 
-	}else if(horzDirection == BACKWARD){
-		hall_cnt_horz_1--;
+	if(horzDirection == BACKWARD){
+		hall_cnt_horz_1--; 
+	}else{
+		hall_cnt_horz_1++;
 	}
 }
 
 
-void init_hall_cnt(void)
+/* just for safty reasons and never used in normal operation */
+ISR(PCINT2_vect)
 {
-	/* reset hall counters */
-	hall_cnt_vert_1 = 0x00;
-	hall_cnt_horz_1 = 0x00;
+	if(vertDirection == BACKWARD && i2cdata[1] != CMD_GOTO_REFERENCE){
+		VERT_D_PORT &= ~(1<<VERT_D2);
+		i2cdata[1] = ERR_ILLEGAL_END;
+	}
+} 
 
-	/* Enable ext. interrupt on rising edges */
-	EICRA |= (1<<ISC00) | (0<<ISC01) | (0<<ISC10) | (0<<ISC11);	
-	EIMSK |= (1<<INT0) | (1<<INT1);	
+
+ISR(PCINT0_vect)
+{
+	if(horzDirection == BACKWARD && i2cdata[2] != CMD_GOTO_REFERENCE){
+		HORZ_D_PORT &= ~(1<<HORZ_D2);
+		i2cdata[2] = ERR_ILLEGAL_END;
+	}
+}
+
+
+int main( void )
+{
+	/* init functions */
+	init_io_ports();
+	init_hall_cnt();
+	init_twi_slave(I2C_SLAVE_ADRESSE);
+	init_timer();
+
 	sei();	
+
+	ENABLE_MOTOR_CONTROLLERS;
+
+	/* goto reference position on reset */	
+	i2cdata[1] = CMD_GOTO_REFERENCE;
+	i2cdata[2] = CMD_GOTO_REFERENCE;
+
+//	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+
+	while(1)
+	{
+		i2cdata[5] = hall_cnt_horz_1;
+		i2cdata[6] = (hall_cnt_horz_1 >> 7);
+		i2cdata[7] = (hall_cnt_horz_1 >> 14);
+
+		/* disable motors reaching upper step limit */
+		if(hall_cnt_horz_1 > MAX_NUMBER_OF_STEPS){
+			HORZ_D_PORT &= ~(1<<HORZ_D2);
+			i2cdata[2] = ERR_STEPCOUNTER_OVERFLOW;
+		}
+
+		if(hall_cnt_vert_1 > MAX_NUMBER_OF_STEPS){
+			VERT_D_PORT &= ~(1<<VERT_D2);
+			i2cdata[1] = ERR_STEPCOUNTER_OVERFLOW;
+		}
+
+		/* processing staus flag */
+		if(!(VERT_SF_PORT |= (1<<VERT_SF))){
+			/* D2 needs to be toogled to clear status flag */	
+			for (unsigned char i=0x00; i<0x05; i++){
+				VERT_D_PORT ^= (1<<VERT_D2); 
+				_delay_ms(1);
+			}
+			/* if status flag is stil set, entering error state */
+			if(!(VERT_SF_PORT |= (1<<VERT_SF))){
+				i2cdata[1] = ERR_STAUS_FLAG;
+			}
+		}
+
+		if(!(HORZ_SF_PORT |= (1<<HORZ_SF))){
+			/* D2 needs to be toogled to clear status flag */	
+			for (unsigned char i=0x00; i<0x05; i++){
+				HORZ_D_PORT ^= (1<<HORZ_D2); 
+				_delay_ms(1);
+			}
+			/* if status flag is stil set, entering error state */
+			if(!(HORZ_SF_PORT |= (1<<HORZ_SF))){
+				i2cdata[2] = ERR_STAUS_FLAG;
+			}
+		}
+
+		_delay_ms(2000);
+
+		if(i2cdata[1] == CMD_TERMINATED && i2cdata[2] == CMD_TERMINATED){
+//			FIXME
+//			DISABLE_MOTOR_CONTROLLERS;
+//			sleep_mode();                   // goto sleep mode
+//			ENABLE_MOTOR_CONTROLLERS;
+//			_delay_ms(1);
+		}
+	}
+	
+	return 0; 
+}
+
+
+unsigned char motorControl(unsigned char motor, unsigned char mode){
+	if(mode == GOTO_REFERENCE){
+		if(motor == VERTICAL){
+			VERT_DIR_PORT &= ~(1<<VERT_DIR);
+			VERT_OUT_PORT |= (1<<VERT_OUT);
+			VERT_D_PORT |= (1<<VERT_D2);
+			VERT_D_PORT &= ~(1<<VERT_D1);
+			if(!(VERT_END_PIN & (1<<VERT_END))){  		// if end-switch is low
+				VERT_OUT_PORT &= ~(1<<VERT_OUT);	// disable motor
+				hall_cnt_vert_1 = 0x00;			// reset counter
+				i2cdata[1] = CMD_TERMINATED;
+			}
+		}
+		else if (motor == HORIZONTAL){
+			HORZ_DIR_PORT &= ~(1<<HORZ_DIR);
+			HORZ_OUT_PORT |= (1<<HORZ_OUT);
+			HORZ_D_PORT |= (1<<HORZ_D2);
+			HORZ_D_PORT &= ~(1<<HORZ_D1);
+			if(!(HORZ_END_PIN & (1<<HORZ_END))){  		// if end-switch is low
+				HORZ_OUT_PORT &= ~(1<<HORZ_OUT);	// disable motor
+				hall_cnt_horz_1 = 0x00;			// reset counter
+				i2cdata[2] = CMD_TERMINATED;
+			}
+		}
+	}else if(mode == NORMAL_MODE){
+		if(motor == VERTICAL){
+			VERT_D_PORT |= (1<<VERT_D2);
+			VERT_D_PORT &= ~(1<<VERT_D1);
+			//steps = 48000;
+			if(vertSteps > hall_cnt_vert_1){
+				vertDirection = FORWARD;
+				VERT_DIR_PORT |= (1<<VERT_DIR);
+				VERT_OUT_PORT |= (1<<VERT_OUT);
+			}else if(vertSteps < hall_cnt_vert_1){
+				vertDirection = BACKWARD;
+				VERT_OUT_PORT |= (1<<VERT_OUT);
+				VERT_DIR_PORT &= ~(1<<VERT_DIR);
+			}else{
+				VERT_OUT_PORT &= ~(1<<VERT_OUT);
+				i2cdata[1] = CMD_TERMINATED;
+			}
+		}else if(motor == HORIZONTAL){
+			HORZ_D_PORT |= (1<<HORZ_D2);
+			HORZ_D_PORT &= ~(1<<HORZ_D1);
+			if(horzSteps > hall_cnt_horz_1){
+				horzDirection = FORWARD;
+				HORZ_DIR_PORT |= (1<<HORZ_DIR);
+				HORZ_OUT_PORT |= (1<<HORZ_OUT);
+			}else if(horzSteps < hall_cnt_horz_1){
+				horzDirection = BACKWARD;
+				HORZ_OUT_PORT |= (1<<HORZ_OUT);
+				HORZ_DIR_PORT &= ~(1<<HORZ_DIR);
+			}else{
+				HORZ_OUT_PORT &= ~(1<<HORZ_OUT);
+				i2cdata[2] = CMD_TERMINATED;
+			}
+		}
+	}
+	return 0;
+}
+
+
+void init_hall_cnt(void){
+	/* Enable ext. interrupt on rising edges */
+	EICRA |= (1<<ISC00) | (1<<ISC01) | (1<<ISC10) | (1<<ISC11);	
+	EIMSK |= (1<<INT0) | (1<<INT1);	
+}
+
+
+void init_timer(void){
+	/* timer overflow every 1ms */
+	TCCR0B |= (1<<CS01) | (1<<CS00); 	// Prescaler 64
+	TCNT0 = 131;				// Preload 131
+	TIMSK0 |= (1<<TOIE0);			// Overflow Interrupt 
 }
 
 
@@ -54,6 +253,8 @@ void init_io_ports(void){
 	/* M1nSF | M2nSF */
 	VERT_SF_DDR &= ~(1<<VERT_SF);
 	HORZ_SF_DDR &= ~(1<<HORZ_SF);
+	VERT_SF_PORT |= (1<<VERT_SF);
+	HORZ_SF_PORT |= (1<<HORZ_SF);
 
 	/* M1D1 | M2D1 | M1nD2 | M2nD2 */
 	VERT_D_DDR |= (1<<VERT_D1)|(1<<VERT_D2);
@@ -66,122 +267,10 @@ void init_io_ports(void){
 	/* M1_HALL1 | M2_HALL1 */
 	HALL_1_DDR &= ~((1<<VERT_HALL_1)|(1<<HORZ_HALL_1));
 	HALL_1_PORT |= (1<<VERT_HALL_1)|(1<<HORZ_HALL_1);
+
+	/* Pin change interrupt on M1_End_Swich and M2_End_Swich*/
+	PCMSK0 |= (1 << PCINT6);
+	PCMSK2 |= (1 << PCINT16);
+	PCICR |= (1 << PCIE0)|(1 << PCIE2);
 }
 
-
-int main( void )
-{
-	/* init functions */
-	init_io_ports();
-	init_hall_cnt();
-	init_twi_slave(I2C_SLAVE_ADRESSE);
-
-/* i2c DEBUG messages */
-	i2cdata[3] = 0xDE;
-	i2cdata[4] = 0xAD;
-	i2cdata[5] = 0xBE;
-	i2cdata[6] = 0xEF;
-/* i2c DEBUG  messages */
-
-	/* goto reference position on reset */
-	motorControl(0x00,VERTICAL,GOTO_REFERENCE);
-
-	while(1)
-	{
-		switch(i2cdata[1]){
-		case SET_AZIMUTH:	
-			azimuth = i2cdata[2]; motorControl(azimuth,HORIZONTAL,NORMAL_MODE); break;
-		case SET_ELEVATION:	
-			elevation = i2cdata[2]; motorControl(elevation,VERTICAL,NORMAL_MODE);break;
-		case GOTO_VERTICAL_REFERENCE:	
-			motorControl(0x00,VERTICAL,GOTO_REFERENCE); break;
-		case GOTO_HORIZONTAL_REFERENCE:	
-			motorControl(0x00,HORIZONTAL,GOTO_REFERENCE); break;
-		default: break;
-		}
-	}
-	
-	return 0; 
-}
-
-
-unsigned char motorControl(unsigned char angle, unsigned char motor, unsigned char mode){
-
-	unsigned char dir, out, end, dirPort, outPort, dPort, endPin, d1, d2;
-
-	ENABLE_MOTOR_CONTROLLERS;
-	
-	if(mode == GOTO_REFERENCE){
-		if(motor == VERTICAL){
-			end = VERT_END; 
-			endPin = VERT_END_PIN;
-			dir = VERT_DIR; 
-			out = VERT_OUT; 
-			dirPort = VERT_DIR_PORT; 
-			outPort = VERT_OUT_PORT;
-			dPort = VERT_D_PORT;
-			d1 = VERT_D1; 
-			d2 = VERT_D2;
-		}
-		else if (motor == HORIZONTAL){
-			end = HORZ_END;
-			endPin = HORZ_END_PIN;
-			dir = HORZ_DIR; 
-			out = HORZ_OUT; 
-			dirPort = HORZ_DIR_PORT; 
-			outPort = HORZ_OUT_PORT;
-			dPort = HORZ_D_PORT;
-			d1 = HORZ_D1; 
-			d2 = HORZ_D2;
-		}
-		dPort |= (1<<d2); dPort &= ~(1<<d1);
-		dirPort &= ~(1<<dir);
-		outPort |= (1<<out);
-		while(endPin & (1<<end)){ asm("nop"); }
-	}else{
-		if(motor == VERTICAL){
-			unsigned int steps = angle * VERTICAL_FACTOR;
-			if(steps > hall_cnt_vert_1){
-				EICRA |= (1<<ISC00) | (1<<ISC01);	// cnt rising edges
-				vertDirection = FORWARD;
-				while(hall_cnt_vert_1 < steps)
-				{		
-					VERT_OUT_PORT |= (1<<VERT_OUT);
-					VERT_DIR_PORT |= (1<<VERT_DIR);
-				}
-			}else{
-				EICRA |= (0<<ISC00) | (1<<ISC01);  	// cnt falling edges
-				vertDirection = BACKWARD;
-				while(hall_cnt_vert_1 > steps)
-				{		
-					VERT_OUT_PORT |= (1<<VERT_OUT);
-					VERT_DIR_PORT &= ~(1<<VERT_DIR);
-				}
-			}
-		}else if(motor == HORIZONTAL){
-			unsigned int steps = angle * HORIZONTAL_FACTOR;
-			if(steps > hall_cnt_horz_1){
-				EICRA |= (1<<ISC10) | (1<<ISC11);	// cnt rising edges
-				horzDirection = FORWARD;
-				while(hall_cnt_horz_1 > steps)
-				{		
-					HORZ_OUT_PORT |= (1<<HORZ_OUT);
-					HORZ_DIR_PORT |= (1<<HORZ_DIR);
-				}
-			}else{
-				EICRA |= (0<<ISC10) | (1<<ISC11);  	// cnt falling edges
-				horzDirection = BACKWARD;
-				while(hall_cnt_horz_1 < steps)
-				{		
-					HORZ_OUT_PORT |= (1<<HORZ_OUT);
-					HORZ_DIR_PORT &= ~(1<<HORZ_DIR);
-				}
-			}
-		}
-	}
-	outPort &= ~(1<<out);
-	DISABLE_MOTOR_CONTROLLERS;
-
-	i2cdata[1] = CMD_TERMINATED;
-	return 0;
-}
