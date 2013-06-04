@@ -1,3 +1,27 @@
+/*********************************************************************
+Sun_Tracking_Control/main.c
+
+Converts sun angles and drives two linear motors for horizontal 
+and vertical sun-tracking.
+
+Copyright (C) 2013  Felix Gottwald, HTW Dresden
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+Contact: gottwald@htw-dresden.de
+***********************************************************************/
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/twi.h>
@@ -102,7 +126,7 @@ int main( void )
 	i2cdata[1] = CMD_GOTO_REFERENCE;
 	i2cdata[2] = CMD_GOTO_REFERENCE;
 
-//	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
 	while(1)
 	{
@@ -149,11 +173,10 @@ int main( void )
 		_delay_ms(2000);
 
 		if(i2cdata[1] == CMD_TERMINATED && i2cdata[2] == CMD_TERMINATED){
-//			FIXME
-//			DISABLE_MOTOR_CONTROLLERS;
-//			sleep_mode();                   // goto sleep mode
-//			ENABLE_MOTOR_CONTROLLERS;
-//			_delay_ms(1);
+			DISABLE_MOTOR_CONTROLLERS;
+			sleep_mode();                   // goto sleep mode
+			ENABLE_MOTOR_CONTROLLERS;
+			_delay_ms(1);
 		}
 	}
 	

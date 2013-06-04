@@ -1,3 +1,28 @@
+/*********************************************************************
+Sun_Tracking_Control/main.h
+
+Converts sun angles and drives two linear motors for horizontal 
+and vertical sun-tracking.
+
+Copyright (C) 2013  Felix Gottwald, HTW Dresden
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+Contact: gottwald@htw-dresden.de
+***********************************************************************/
+
+
 /**** directions ****/
 #define BACKWARD 			0x01
 #define FORWARD				0x02
