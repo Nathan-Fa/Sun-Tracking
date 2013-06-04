@@ -70,7 +70,7 @@ ISR(INT1_vect)
 /* just for safty reasons and never used in normal operation */
 ISR(PCINT2_vect)
 {
-	if(vertDirection == BACKWARD && i2cdata[1] != CMD_GOTO_REFERENCE){
+	if((!(VERT_END_PIN & (1<<VERT_END))) && (vertDirection == BACKWARD) && (i2cdata[1] != CMD_GOTO_REFERENCE)){
 		VERT_D_PORT &= ~(1<<VERT_D2);
 		i2cdata[1] = ERR_ILLEGAL_END;
 	}
@@ -79,7 +79,7 @@ ISR(PCINT2_vect)
 
 ISR(PCINT0_vect)
 {
-	if(horzDirection == BACKWARD && i2cdata[2] != CMD_GOTO_REFERENCE){
+	if((!(HORZ_END_PIN & (1<<HORZ_END))) && (horzDirection == BACKWARD) && (i2cdata[2] != CMD_GOTO_REFERENCE)){
 		HORZ_D_PORT &= ~(1<<HORZ_D2);
 		i2cdata[2] = ERR_ILLEGAL_END;
 	}

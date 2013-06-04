@@ -13,7 +13,7 @@
 #define VERTICAL_FACTOR			0x1E0
 #define HORIZONTAL_FACTOR 		0x215
 
-#define MAX_NUMBER_OF_STEPS		0xBB80
+#define MAX_NUMBER_OF_STEPS		0xBD74
 
 /**** pin definitions ****/
 #define VERT_D1				PB0

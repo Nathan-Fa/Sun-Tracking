@@ -1,9 +1,7 @@
 Sun_Tracking_Control
 ===============
 
-Converts sun angles and drives two linear motors for sun-tracking
-
-#######################################################################
+Converts sun angles and drives two linear motors for sun-tracking.
 
 Copyright (C) 2013  Felix Gottwald, HTW Dresden
 
@@ -23,42 +21,41 @@ Copyright (C) 2013  Felix Gottwald, HTW Dresden
 contact:
 info@labor-elektrische-mobilitaet.de
 
-#######################################################################
-
-main features:
+#### main features:
 - calculating step count from given sun angles 
 - evaluates hall-sensor-controlled step counter 
 - drives half-bridges for linear motors to given angles
 - Safety functions 
 
-Communication protocol: 
+#### Communication protocol: 
 
-- i²c slave adresse 		0x13
+* i²c slave adresse 			`0x13`
+* ERROR CODES: 
+    * _ERR\_STAUS\_FLAG_		`0x50`
+    * _ERR\_ILLEGAL\_END_		`0x51`
+    * _ERR\_STEPCOUNTER\_OVERFLOW_	`0x52`
+* COMMANDS:
+    * _CMD\_SET\_ANGLE_	 		`0x02`
+    * _CMD\_GOTO\_REFERENCE_ 		`0x04`
+    * _CMD\_STOP_			`0x06`
+    * _CMD\_RESET_			`0x08`
+    * _CMD\_TERMINATED_			`0x33`
+* I²C Register Definition:
 
-- ERROR CODES: 
-	ERR_STAUS_FLAG			0x50
-	ERR_ILLEGAL_END			0x51
-	ERR_STEPCOUNTER_OVERFLOW	0x52
 
-- COMMANDS:
-	CMD_SET_ANGLE	 		0x02
-	CMD_GOTO_REFERENCE 		0x04
-	CMD_STOP			0x06
-	CMD_RESET			0x08
-	CMD_TERMINATED			0x33
+register | meaning
+1 | vertical cmd/err
+2 | horizontal cmd/err
+3 | vertical data
+4 | horizontal data
 
-- I²C Register Definition:
-	reg. 	meaning
-	1	vertical cmd/err 
-	2	horizontal cmd/err
-	3	vertical data
-	4	horizontal data
 
-#######################################################################
+#### Used devices: 
+* ATMega88(Atmel) 
+* 33926(freescale) 
+* SM4S520M1(SatControl)
 
-Used device: ATMega88(Atmel), 33926(freescale), SM4S520M1(SatControl)
-
-Documentation and Schematics can be found at: 
-http://wiki.labor-elektrische-mobilitaet.de/index.php/LEV_charge:Sonnenstandsnachf%C3%BChrungseinrichtung
-http://wiki.labor-elektrische-mobilitaet.de/index.php/Motorsteuerung
+#### Documentation and Schematics:
+* http://wiki.labor-elektrische-mobilitaet.de/index.php/LEV_charge:Sonnenstandsnachf%C3%BChrungseinrichtung
+* http://wiki.labor-elektrische-mobilitaet.de/index.php/Motorsteuerung
 
